@@ -57,28 +57,28 @@
 		});
 		$( "#gamma" ).val( $( "#slider" ).slider( "value" ) );
 	});
-	</script>
-	
+	</script>	
+
 	<style type="text/css">
-		/*demo page css*/
-		body{ font: 62.5% "Trebuchet MS", sans-serif; margin: 50px;}
+		body{ font: 100% "Trebuchet MS", sans-serif; margin: 50px;}
 	</style>
+	
 </head>
 <body>
-	<div class="demo">
-
+	<div class="demo-slider">
 		<p>
 			<label for="gamma">Gamma (0.01 increments):</label>
 			<input type="text" id="gamma" style="border:0; color:#f6931f; font-weight:bold;" />
 		</p>
 
 		<div id="slider" style="width:200px;"></div>
-		<p></p>
-		<canvas id="coalbedo-sketch" data-processing-sources="pde/coalbedo.pde" width="200" height="200"></canvas>  
-
-		<p></p>
-		<canvas id="temperature-balance-sketch" data-processing-sources="pde/temperature-balance.pde" width="200" height="200"></canvas>
-
 	</div>
 
+	<div class="coalbedo-charts">
+		<p>Co-albedo factor a_p for selected gamma.</p>
+		<canvas id="coalbedo-sketch" data-processing-sources="pde/coalbedo.pde" width="200" height="200"></canvas>  
+
+		<p>Equilibrium planetary coalbedo Q_eq for T in -50C to 50C.</p>
+		<canvas id="temperature-balance-sketch" data-processing-sources="pde/temperature-balance.pde" width="200" height="200"></canvas>
+	</div>
 </html>
