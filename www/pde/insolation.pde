@@ -10,14 +10,14 @@ void setup() {
 
 void draw() { }  
 
-void drawTemperatureBalance(float ti, float tf, float g) {
+void drawInsolation(float ti, float tf, float g) {
     background(#000033);
     float tRange = tf - ti;
     for (int x=0; x < width; x++) {
         float fractionAcross = float(x) / width;
         float tCurrent = ti + fractionAcross * tRange;
-        float tb = temperatureBalance(g, tCurrent);
-        int y = height - tb * height / 1000.0;
+        float q = insolation(g, tCurrent);
+        int y = height - q * height / 1000.0;
         point(x, y);
     }
 }
