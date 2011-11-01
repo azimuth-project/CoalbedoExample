@@ -12,10 +12,10 @@
     <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
     
     <script>  
-    function drawCoalbedoFactor(id) {  
+    function drawCoalbedo(id) {  
         var pjs = Processing.getInstanceById(id);  
         var g = document.getElementById('gamma').value;  
-        pjs.drawCoalbedoFactor(-50, 50, g); 
+        pjs.drawCoalbedo(-50, 50, g); 
     }
     function drawInsolation(id) {  
         var pjs = Processing.getInstanceById(id);  
@@ -83,7 +83,7 @@
         <p>Co-albedo \(a_p\) for selected \(\gamma\).</p>
         <canvas id="coalbedo-sketch" data-processing-sources="pde/coalbedo.pde" width="200" height="200"></canvas>  
 
-        <p>Insolation \(Q_eq\) required to yield a given temperature \(T\) between -50C and 50C.</p>
+        <p>Insolation \(Q_\text{eq}\) required to yield a given temperature \(T\) between -50C and 50C.</p>
         <canvas id="insolation-sketch" data-processing-sources="pde/isolation.pde" width="200" height="200"></canvas>
     </div>
 </body>

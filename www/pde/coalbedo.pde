@@ -10,13 +10,14 @@ void setup() {
 
 void draw() { }  
 
-void drawText(String t) {
+/*void drawText(String t) {
     background(#000033);  
     // get the width for the text  
     float twidth = textWidth(t);           
     // place the text centered on the drawing area  
     text(t, (width - twidth)/2, height/2);     
 }
+*/
 
 void drawCoalbedo(float ti, float tf, float g) {
     background(#000033);
