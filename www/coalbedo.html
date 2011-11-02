@@ -11,29 +11,52 @@
     <script src="js/jquery-ui-1.8.16.custom.min.js"></script>
     <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
     
-    <script>  
-    function drawCoalbedo(id) {  
+    <script>
+    var INIT_GAMMA = 0.0;
+    
+    var COALBEDO_WIDTH = 400;
+    var COALBEDO_HEIGHT = 200;
+    var COALBEDO_T0 = -50.0;
+    var COALBEDO_T1 = 50.0;
+    
+    var COALBEDO_LINE_COLOR = 0xDDFF0000;
+    
+    var INSOLATION_WIDTH = 400;
+    var INSOLATION_HEIGHT = 200;
+    var INSOLATION_T0 = -50.0;
+    var INSOLATION_T1 = 50.0;
+    
+    var INSOLATION_LINE_COLOR = 0xDDFF0000;
+    
+    var BACKGROUND_COLOR = 0xFFDDDDDD;
+    var AXES_COLOR = 0xFF000000;
+    var GRID_COLOR = 0xFFFFFFFF;
+    
+    function drawCoalbedo(id, g) {  
         var pjs = Processing.getInstanceById(id);  
-        var g = document.getElementById('gamma').value;  
-        pjs.drawCoalbedo(-50, 50, g); 
+        // var g = document.getElementById('gamma').value;  
+        pjs.drawCoalbedo(g); 
     }
-    function drawInsolation(id) {  
+    function drawInsolation(id, g) {  
         var pjs = Processing.getInstanceById(id);  
-        var g = document.getElementById('gamma').value;  
-        pjs.drawInsolation(-50, 50, g); 
+        // var g = document.getElementById('gamma').value;  
+        pjs.drawInsolation(g); 
     }
     // rational approximation to tanh, as gratefully scraped from SO:
     //   http://stackoverflow.com/questions/6118028/fast-hyperbolic-tangent-approximation-in-javascript
-    function tanh(x) {
-        if( x < -3 )
-            return -1;
-        else if( x > 3 )
-            return 1;
+    function rational_tanh(x) {
+        if ( x < -3 )
+            return -1.0;
+        else if ( x > 3 )
+            return 1.0;
         else
             return x * ( 27 + x * x ) / ( 27 + 9 * x * x );
     }
+    function tanh(x) {
+        return rational_tanh(x);
+    }
     function coalbedo(g, t) {
-        var ai = 0.38;  // icey planet
+        var ai = 0.38;  // ice-i planet
         var af = 0.71;  // ice-free planet
         var ap = ai + 0.5 * (af - ai) * (1.0 + tanh(g * t));
         return ap;
@@ -43,7 +66,7 @@
         var B = 1.9;     // watts per square meter per celcius
         var ap = coalbedo(g, t);
         var Qeq = (A + B * t) / ap;
-        return Qeq; 
+        return Qeq;
     }
     </script>
 
@@ -55,9 +78,10 @@
             max: 1.0,
             step: 0.01,
             slide: function( event, ui ) {
-                $( "#gamma" ).val( ui.value );
-                drawCoalbedo('coalbedo-sketch');
-                drawInsolation('insolation-sketch');
+                var g = ui.value;
+                $( "#gamma" ).val( g );
+                drawCoalbedo('coalbedo-sketch', g);
+                drawInsolation('insolation-sketch', g);
             }
         });
         $( "#gamma" ).val( $( "#slider" ).slider( "value" ) );
@@ -70,21 +94,21 @@
 
 </head>
 <body>
-    <div class="gamma-slider">
+    <div class="gamma-slider" style="width:400px; font: 62.5%">
         <p>
-            <label for="gamma">Transition rate \(\gamma\) from icey coalbedo \(a_i\) to ice-free coalbedo \(a_f\) (0.01 increments):</label>
+            <label for="gamma">Transition rate \(\gamma\) from icey coalbedo \(a_i\) to ice-free coalbedo \(a_f\)  (0.01 increments):</label>
             <input type="text" id="gamma" style="border:0; color:#f6931f; font-weight:bold;" />
         </p>
 
-        <div id="slider" style="width:200px;"></div>
+        <div id="slider"></div>
     </div>
 
     <div class="coalbedo-charts">
         <p>Co-albedo \(a_p\) for selected \(\gamma\).</p>
-        <canvas id="coalbedo-sketch" data-processing-sources="pde/coalbedo.pde" width="200" height="200"></canvas>  
+        <canvas id="coalbedo-sketch" data-processing-sources="pde/coalbedo.pde" width="400" height="200"></canvas>  
 
         <p>Insolation \(Q_\text{eq}\) required to yield a given temperature \(T\) between -50C and 50C.</p>
-        <canvas id="insolation-sketch" data-processing-sources="pde/isolation.pde" width="200" height="200"></canvas>
+        <canvas id="insolation-sketch" data-processing-sources="pde/insolation.pde" width="400" height="200"></canvas>
     </div>
 </body>
 </html>
