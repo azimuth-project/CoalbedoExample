@@ -4,8 +4,6 @@ void setup() {
     drawCoalbedo(INIT_GAMMA);
 }
 
-void draw() { }  
-
 void drawAxes() {
     float t0 = COALBEDO_T0;
     float t1 = COALBEDO_T1;
@@ -35,16 +33,22 @@ void drawGrid() {
 void drawCoalbedo(float g) {
     drawGrid();
     drawAxes();
+    smooth();
     strokeWeight(2.0);
     stroke(COALBEDO_LINE_COLOR);
     float t0 = COALBEDO_T0;
     float t1 = COALBEDO_T1;
     float tRange = t1 - t0;
+    noFill();
+    beginShape();
     for (int x=0; x < width; x++) {
         float fractionAcross = float(x) / width;
         float tCurrent = t0 + fractionAcross * tRange;
         float ap = coalbedo(g, tCurrent);
         int y = height * (1.0 - ap);
-        point(x, y);
+        vertex(x, y);
     }
+    endShape();
 }
+
+void draw() { }  

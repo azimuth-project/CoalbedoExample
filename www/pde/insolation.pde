@@ -1,7 +1,6 @@
 void setup() {
     size(INSOLATION_WIDTH, INSOLATION_HEIGHT);
     noLoop();           // turn off animation, since we won't need it
-    smooth();
     drawInsolation(INIT_GAMMA);
 }
 
@@ -34,18 +33,22 @@ void drawGrid() {
 void drawInsolation(float g) {
     drawGrid();
     drawAxes();
+    smooth();
     strokeWeight(2.0);
     stroke(INSOLATION_LINE_COLOR);
     float t0 = INSOLATION_T0;
     float t1 = INSOLATION_T1;
     float tRange = t1 - t0;
-    for (int x=0; x < width; x++) {
+    noFill();
+    beginShape();
+    for (int x = 0; x < width; x += 1) {
         float fractionAcross = float(x) / width;
         float tCurrent = t0 + fractionAcross * tRange;
         float q = insolation(g, tCurrent);
-        int y = height * (1.0 - q / 1000.0);
-        point(x, y);
+        int y = height * (1.0 - q / 600.0);
+        vertex(x, y);
     }
+    endShape();
 }
 
 // draw routine is empty since we aren't animating
