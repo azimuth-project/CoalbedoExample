@@ -12,36 +12,55 @@
     <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
     
     <script>
+    function currentGamma() {
+        return $( "#gamma" ).val();
+    }
+    
+    function canvasWidth(id) {
+        return $("canvas#" + id).attr("width");
+    }
+    
+    function canvasHeight(id) {
+        return $("canvas#" + id).attr("height");
+    }
+    
     var INIT_GAMMA = 0.0;
     
-    var COALBEDO_WIDTH = 400;
-    var COALBEDO_HEIGHT = 200;
+    
+    // TODO cut copy/paste constants to inside coalbedo.pde
     var COALBEDO_T0 = -50.0;
     var COALBEDO_T1 = 50.0;
     
     var COALBEDO_LINE_COLOR = 0xDDFF0000;
     
-    var INSOLATION_WIDTH = 400;
-    var INSOLATION_HEIGHT = 200;
     var INSOLATION_T0 = -50.0;
     var INSOLATION_T1 = 50.0;
     
     var INSOLATION_LINE_COLOR = 0xDDFF0000;
+
+    var TEMPERATURE_T0 = -50.0;
+    var TEMPERATURE_T1 = 50.0;
+    
+    var TEMPERATURE_LINE_COLOR = 0xDDFF0000;
     
     var BACKGROUND_COLOR = 0xFFDDDDDD;
     var AXES_COLOR = 0xFF000000;
     var GRID_COLOR = 0xFFFFFFFF;
     
+    // TODO get rid of this repetition
     function drawCoalbedo(id, g) {  
         var pjs = Processing.getInstanceById(id);  
-        // var g = document.getElementById('gamma').value;  
         pjs.drawCoalbedo(g); 
     }
     function drawInsolation(id, g) {  
         var pjs = Processing.getInstanceById(id);  
-        // var g = document.getElementById('gamma').value;  
         pjs.drawInsolation(g); 
     }
+    function drawTemperature(id, g) {  
+        var pjs = Processing.getInstanceById(id);  
+        pjs.drawTemperature(g); 
+    }
+    
     // rational approximation to tanh, as gratefully scraped from SO:
     //   http://stackoverflow.com/questions/6118028/fast-hyperbolic-tangent-approximation-in-javascript
     function rational_tanh(x) {
@@ -75,22 +94,19 @@
         $( "#slider" ).slider({
             value:0.0,
             min: 0.0,
-            max: 1.0,
-            step: 0.01,
+            max: 0.1,
+            step: 0.001,
             slide: function( event, ui ) {
                 var g = ui.value;
                 $( "#gamma" ).val( g );
                 drawCoalbedo('coalbedo-sketch', g);
                 drawInsolation('insolation-sketch', g);
+                drawTemperature('temperature-sketch', g);
             }
         });
         $( "#gamma" ).val( $( "#slider" ).slider( "value" ) );
     });
     </script>   
-
-    <style type="text/css">
-    body{ font: 100% "Trebuchet MS", sans-serif; margin: 50px;}
-    </style>
 
 </head>
 <body>
@@ -108,7 +124,10 @@
         <canvas id="coalbedo-sketch" data-processing-sources="pde/coalbedo.pde" width="400" height="200"></canvas>  
 
         <p>Insolation \(Q_\text{eq}\) required to yield a given temperature \(T\) between -50C and 50C.</p>
-        <canvas id="insolation-sketch" data-processing-sources="pde/insolation.pde" width="400" height="200"></canvas>
+        <canvas id="insolation-sketch" data-processing-sources="pde/coalbedo.pde" width="400" height="200"></canvas>
+
+        <p>Temperature \(T_\text{eq}\) given insolation \(Q\) between 200 and 500.</p>
+        <canvas id="temperature-sketch" data-processing-sources="pde/coalbedo.pde" width="400" height="400"></canvas>
     </div>
 </body>
 </html>
