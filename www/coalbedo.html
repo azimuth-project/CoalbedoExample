@@ -90,6 +90,7 @@
                 s.val( g );
                 coalbedoBoard.update(s);
                 insolationBoard.update(s);
+                temperatureBoard.update(s);
             }
         });
         $( "#gamma" ).val( $( "#slider" ).slider( "value" ) );
@@ -113,15 +114,18 @@
         <p>Co-albedo \(a_p\) for selected \(\gamma\).</p>
         <div id="coalbedo-box" class="jxgbox" style="width:500px; height:250px;"></div>
         <p>Insolation \(Q_\text{eq}\) required to yield a given temperature \(T\) between -50C and 50C.</p>
-        <div id="insolation-box" class="jxgbox" style="width:500px; height:500px;"></div>
-        <!-- <p>Temperature \(T_\text{eq}\) given insolation \(Q\) between 200 and 500.</p>
-        <div id="coalbedo-box" class="jxgbox" style="width:500px; height:500px;"></div> -->
+        <div id="insolation-box" class="jxgbox" style="width:500px; height:250px;"></div>
+        <p>Temperature \(T_\text{eq}\) given insolation \(Q\) between 200 and 500.</p>
+        <div id="temperature-box" class="jxgbox" style="width:500px; height:500px;"></div>
         <script type="text/javascript">
+            JXG.Options.renderer = "canvas";
             var coalbedoBoard = JXG.JSXGraph.initBoard('coalbedo-box', {boundingbox: [-50, 0.75, 50, -0.05], axis:true, showCopyright:false});
             var insolationBoard = JXG.JSXGraph.initBoard('insolation-box', {boundingbox: [-50, 600, 50, -20], axis:true, showCopyright:false});
+            var temperatureBoard = JXG.JSXGraph.initBoard('temperature-box', {boundingbox: [200, 50, 500, -50], axis:true, showCopyright:false});
             
             coalbedoBoard.create('functiongraph', [function(T){return coalbedo(currentGamma(), T);}], {strokeWidth:3});
             insolationBoard.create('functiongraph', [function(T){return insolationEq(currentGamma(), T);}], {strokeWidth:3});
+            temperatureBoard.create('curve', [function(T){return insolationEq(currentGamma(), T);}, function(T){return T;}, -50, 50], {strokeWidth:3});
         </script>
     </div>
     

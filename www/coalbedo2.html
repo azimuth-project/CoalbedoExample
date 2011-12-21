@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<html>
+
+<!-- NOTE:   contains dynamic content so some browsers will not be able to view locally as file://.. -->
+
+<head>
+
+    <title>Azimuth simple climate model example</title>
+
+    <link type="text/css" href="css/smoothness/jquery-ui-1.8.16.custom.css" rel="stylesheet" /> 
+
+    <script type="text/javascript" src="js/jquery-1.6.2.min.js"></script>
+    <script type="text/javascript" src="js/jquery-ui-1.8.16.custom.min.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
+    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.92/jsxgraphcore.js">
+    </script>
+    
+    <script>
+    // globals: we'll add a JSXGraph board and a plot to these
+    var temperatureBoard, temperaturePlot;
+
+    function updateTemperatureBoard() {
+        updateTemperaturePlot(temperatureBoard, temperaturePlot);
+    }
+
+    function initSlider(valueName, sliderName, properties, sideEffect) {
+        properties.slide = function(event, ui) {
+            $(valueName).val(ui.value);
+            sideEffect();
+        }
+        $(sliderName).slider(properties);
+        $(valueName).val($(sliderName).slider("value"));
+    }
+    
+    $(function() {
+        $("#gamma-slider").slider({
+            value: 0, min: 0, max: 0.1, step: 0.001,
+            slide: function(event, ui) {
+                $("#gamma").val(ui.value);
+                updateTemperatureBoard();
+            }
+        });
+        $("#gamma").val($("#gamma-slider").slider("value"))
+    });
+    // $(initSlider("#gamma", "#gamma-slider", {value: 0, min: 0, max: 0.1, step: 0.001}, updateTemperatureBoard));
+
+    $(function() {
+        $("#X-slider").slider({
+            value: 0, min: 0, max: 50, step: 0.1,
+            slide: function(event, ui) {
+                $("#X").val(ui.value);
+                updateTemperatureBoard();
+            }
+        });
+        $("#X").val($("#X-slider").slider("value"))
+    });
+    // $(initSlider("#X", "#X-slider", {value: 0, min: 0, max: 50, step: 0.1}, updateTemperatureBoard));
+
+    $(function() {
+        $( "#time-interval-slider" ).slider({
+            range: true,
+            min: 0,
+            max: 10,
+            values: [1, 4],
+            step: 0.1,
+            slide: function(event, ui) {
+                $( "#time-interval" ).val( ui.values[ 0 ] + " - " + ui.values[ 1 ] );
+                updateTemperatureBoard();
+            }
+        });
+        var t0 = $("#time-interval-slider" ).slider("values", 0);
+        var t1 = $("#time-interval-slider" ).slider("values", 1);
+        $("#time-interval").val(t0 + " - " + t1);
+    });
+    </script>   
+
+</head>
+<body>
+    <div class="slider">
+        <p>
+            <label for="gamma">Gamma:</label>
+            <input type="text" id="gamma" style="border:0; color:#f6931f; font-weight:bold;" />
+        </p>
+        <div id="gamma-slider"></div>
+
+        <p>
+            <label for="X">X:</label>
+            <input type="text" id="X" style="border:0; color:#f6931f; font-weight:bold;" />
+        </p>
+        <div id="X-slider"></div>
+
+        <p>
+            <label for="time-interval">Time interval:</label>
+            <input type="text" id="time-interval" style="border:0; color:#f6931f; font-weight:bold;" />
+        </p>
+        <div id="time-interval-slider"></div>
+        
+    </div>
+    
+    <div class="coalbedo-charts">
+        <p>Temperature \(T_\text{eq}\) for \(t\) between 0 and 10 years out.</p>
+        <div id="temperature-box" class="jxgbox" style="width:600px; height:400px;"></div>
+        
+        <script type="text/javascript">
+            // some globals
+            var INSOLATION_A = 218.0;           // watts per square meter
+            var INSOLATION_RATE_B = 1.9;        // watts per square meter per celcius
+            var INSOLATION_Q_BASE = 342.5;
+            var HEAT_CAPACITY_C = 0.5 * 1e7; 
+            var INITIAL_TEMPERATURE_T0 = 20;
+
+            function yearsToSecs(y) {
+                return y * 365.25 * 24 * 60 * 60;
+            }
+                        
+            // the main temperature board (variable declared as global above)
+            temperatureBoard = JXG.JSXGraph.initBoard(
+                'temperature-box', 
+                {boundingbox: [0, 50, yearsToSecs(10), -50], axis:true, showCopyright:false}
+            );
+            
+            // the temperature plot is initialized empty and filled in updateTemperaturePlot( , )
+            temperaturePlot = temperatureBoard.createElement(
+                'curve', 
+                [[], []],
+                {strokeColor: '#FF7400', strokeWidth: 3}
+            );
+
+            // rational approximation to tanh, as gratefully scraped from SO:
+            //   http://stackoverflow.com/questions/6118028/fast-hyperbolic-tangent-approximation-in-javascript
+            function rational_tanh(x) {
+                if (x < -3) return -1.0;
+                else if (x > 3) return 1.0;
+                else return x * (27 + x * x) / (27 + 9 * x * x);
+            }
+            
+            function tanh(x) {
+                return rational_tanh(x);
+            }
+            
+            function coalbedo(T) {
+                var ai = 0.38,  // ice-i planet
+                    af = 0.71,  // ice-free planet
+                    g = +$("#gamma").val();
+                var ap = ai + 0.5 * (af - ai) * (1.0 + tanh(g * T));
+                return ap;
+            }
+            function insolationBump_f(t) {
+                var X = +$("#X").val();
+                var t0 = $("#time-interval-slider" ).slider("values", 0);
+                var t1 = $("#time-interval-slider" ).slider("values", 1);
+                if (yearsToSecs(t0) <= t && t < yearsToSecs(t1)) return X;
+                else return 0;
+            }
+            
+            function insolationQ(t) {
+                return INSOLATION_Q_BASE + insolationBump_f(t);
+            }
+            
+            function temperatureOde(t, T) {
+                var A = INSOLATION_A,
+                    B = INSOLATION_RATE_B,
+                    C = HEAT_CAPACITY_C,
+                    Qt = insolationQ(t),
+                    ap = coalbedo(T[0]);
+
+                var dT_by_dt = (-A - B * T[0] + Qt * ap) / C;
+                
+                return [dT_by_dt];
+            }
+
+            // time interval
+            var TI = [0, yearsToSecs(10)];
+            // number of time steps
+            var N = 1000;
+
+            function solvedOdeData() {
+                // initial value
+                var T0 = INITIAL_TEMPERATURE_T0;
+                // data from solved ode
+                var data = JXG.Math.Numerics.rungeKutta('heun', [T0], TI, N, temperatureOde);
+                
+                return data;
+            }
+            
+            function updateTemperaturePlot(board, plot) {
+                board.suspendUpdate();
+                plot.updateDataArray = function() {
+                    var Ts = solvedOdeData();
+                    // time intervals to push alongside data
+                    var tCurrent = TI[0],
+                        tStep = (TI[1] - TI[0]) / N;
+
+                    this.dataX = [];
+                    this.dataY = [];
+                    for (i=0; i < Ts.length; i++) {
+                        this.dataX[i] = tCurrent;
+                        this.dataY[i] = Ts[i][0];
+                        tCurrent += tStep;
+                    }
+                }
+                board.unsuspendUpdate();
+            }
+            
+            updateTemperatureBoard();
+        </script>
+    </div>
+</body>
+</html>
