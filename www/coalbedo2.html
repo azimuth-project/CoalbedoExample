@@ -17,13 +17,9 @@
     </script>
     
     <script>
-    // globals: we'll add a JSXGraph board and a plot to these
-    var temperatureBoard, temperaturePlot;
-
-    function updateTemperatureBoard() {
-        updateTemperaturePlot(temperatureBoard, temperaturePlot);
-    }
-
+    var MIN_t = 0, MAX_t = 3,
+        INIT_t0 = 0, INIT_t1 = 1;
+        
     function initSlider(valueName, sliderName, properties, sideEffect) {
         properties.slide = function(event, ui) {
             $(valueName).val(ui.value);
@@ -60,10 +56,10 @@
     $(function() {
         $( "#time-interval-slider" ).slider({
             range: true,
-            min: 0,
-            max: 10,
-            values: [1, 4],
-            step: 0.1,
+            min: MIN_t,
+            max: MAX_t,
+            values: [INIT_t0, INIT_t1],
+            step: 0.01,
             slide: function(event, ui) {
                 $( "#time-interval" ).val( ui.values[ 0 ] + " - " + ui.values[ 1 ] );
                 updateTemperatureBoard();
@@ -82,19 +78,19 @@
             <label for="gamma">Gamma:</label>
             <input type="text" id="gamma" style="border:0; color:#f6931f; font-weight:bold;" />
         </p>
-        <div id="gamma-slider"></div>
+        <div id="gamma-slider" style="width:600px;"></div>
 
         <p>
             <label for="X">X:</label>
             <input type="text" id="X" style="border:0; color:#f6931f; font-weight:bold;" />
         </p>
-        <div id="X-slider"></div>
+        <div id="X-slider" style="width:600px;"></div>
 
         <p>
             <label for="time-interval">Time interval:</label>
             <input type="text" id="time-interval" style="border:0; color:#f6931f; font-weight:bold;" />
         </p>
-        <div id="time-interval-slider"></div>
+        <div id="time-interval-slider" style="width:600px;"></div>
         
     </div>
     
@@ -107,26 +103,39 @@
             var INSOLATION_A = 218.0;           // watts per square meter
             var INSOLATION_RATE_B = 1.9;        // watts per square meter per celcius
             var INSOLATION_Q_BASE = 342.5;
-            var HEAT_CAPACITY_C = 0.5 * 1e7; 
-            var INITIAL_TEMPERATURE_T0 = 20;
-
+            var HEAT_CAPACITY_C = 0.5 * 1e7;
+            var TEMPERATURE_RANGE = [-50, 50], T0 = TEMPERATURE_RANGE[0], T1 = TEMPERATURE_RANGE[1];
+            var NO_OF_CURVES = 10; 
+            var INITIAL_TEMPERATURES = [];
+            // the main temperature board (variable declared as global)
+            var temperatureBoard = JXG.JSXGraph.initBoard(
+                'temperature-box', 
+                {boundingbox: [MIN_t, T1, MAX_t, T0], axis:true, showCopyright:false}
+            );
+            var temperaturePlots = [];
+            var incT = (T1 - T0) / NO_OF_CURVES;
+            var incColor = 0xff / NO_OF_CURVES;
+            for (var i=0, T=T0, red=0x00, blue=0xff; i < NO_OF_CURVES; i++) {
+                INITIAL_TEMPERATURES[i] = T;
+                var redStr = Math.round(red).toString(16),
+                    blueStr = Math.round(blue).toString(16);
+                
+                // the temperature plot global is initialized empty and filled in updateTemperatureBoard()
+                temperaturePlots[i] = temperatureBoard.createElement(
+                    'curve', 
+                    [[], []],
+                    {strokeColor: '#' + redStr + '00' + blueStr, strokeWidth: 2}
+                );
+                T += incT;
+                red += incColor;
+                blue -= incColor;
+            }
+            
             function yearsToSecs(y) {
                 return y * 365.25 * 24 * 60 * 60;
             }
-                        
-            // the main temperature board (variable declared as global above)
-            temperatureBoard = JXG.JSXGraph.initBoard(
-                'temperature-box', 
-                {boundingbox: [0, 50, yearsToSecs(10), -50], axis:true, showCopyright:false}
-            );
             
-            // the temperature plot is initialized empty and filled in updateTemperaturePlot( , )
-            temperaturePlot = temperatureBoard.createElement(
-                'curve', 
-                [[], []],
-                {strokeColor: '#FF7400', strokeWidth: 3}
-            );
-
+            
             // rational approximation to tanh, as gratefully scraped from SO:
             //   http://stackoverflow.com/questions/6118028/fast-hyperbolic-tangent-approximation-in-javascript
             function rational_tanh(x) {
@@ -158,49 +167,57 @@
                 return INSOLATION_Q_BASE + insolationBump_f(t);
             }
             
-            function temperatureOde(t, T) {
+            function temperatureOde(t, Ts) {
                 var A = INSOLATION_A,
                     B = INSOLATION_RATE_B,
                     C = HEAT_CAPACITY_C,
-                    Qt = insolationQ(t),
-                    ap = coalbedo(T[0]);
-
-                var dT_by_dt = (-A - B * T[0] + Qt * ap) / C;
-                
-                return [dT_by_dt];
+                    Qt = insolationQ(t);
+                    
+                var dTs_by_dt = [], T, ap, i, lenTs;
+                for (i=0, lenTs=Ts.length; i < lenTs; i++) {
+                    T = Ts[i];
+                    ap = coalbedo(T);
+                    dTs_by_dt[i] = (-A - B * T + Qt * ap) / C;
+                }
+            
+                return dTs_by_dt;
             }
 
             // time interval
-            var TI = [0, yearsToSecs(10)];
+            var tI = [MIN_t, yearsToSecs(MAX_t)], scale = yearsToSecs(1);
+            
             // number of time steps
             var N = 1000;
 
             function solvedOdeData() {
                 // initial value
-                var T0 = INITIAL_TEMPERATURE_T0;
+                var TS0 = INITIAL_TEMPERATURES;
+                
                 // data from solved ode
-                var data = JXG.Math.Numerics.rungeKutta('heun', [T0], TI, N, temperatureOde);
+                var data = JXG.Math.Numerics.rungeKutta('heun', TS0, tI, N, temperatureOde);
                 
                 return data;
             }
             
-            function updateTemperaturePlot(board, plot) {
-                board.suspendUpdate();
-                plot.updateDataArray = function() {
-                    var Ts = solvedOdeData();
-                    // time intervals to push alongside data
-                    var tCurrent = TI[0],
-                        tStep = (TI[1] - TI[0]) / N;
+            function updateTemperatureBoard() {
+                temperatureBoard.suspendUpdate();
+                var Ts = solvedOdeData();
+                for (var i=0, lenPlots=temperaturePlots.length; i < lenPlots; i++) {
+                    temperaturePlots[i].updateDataArray = function(ii) { return function() {
+                        // time intervals to push alongside data
+                        var tCurrent = tI[0],
+                            tStep = (tI[1] - tI[0]) / N;
 
-                    this.dataX = [];
-                    this.dataY = [];
-                    for (i=0; i < Ts.length; i++) {
-                        this.dataX[i] = tCurrent;
-                        this.dataY[i] = Ts[i][0];
-                        tCurrent += tStep;
-                    }
+                        this.dataX = [];
+                        this.dataY = [];
+                        for (j=0; j < Ts.length; j++) {
+                            this.dataX[j] = tCurrent / scale;
+                            this.dataY[j] = Ts[j][ii];
+                            tCurrent += tStep;
+                        }
+                    }; }(i);
                 }
-                board.unsuspendUpdate();
+                temperatureBoard.unsuspendUpdate();
             }
             
             updateTemperatureBoard();
