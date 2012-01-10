@@ -105,7 +105,7 @@
             var INSOLATION_Q_BASE = 342.5;
             var HEAT_CAPACITY_C = 0.5 * 1e7;
             var TEMPERATURE_RANGE = [-50, 50], T0 = TEMPERATURE_RANGE[0], T1 = TEMPERATURE_RANGE[1];
-            var NO_OF_CURVES = 20; 
+            var NO_OF_CURVES = 15; 
             var INITIAL_TEMPERATURES = [];
             // the main temperature board (variable declared as global)
             var temperatureBoard = JXG.JSXGraph.initBoard(
@@ -187,7 +187,7 @@
             var tI = [MIN_t, yearsToSecs(MAX_t)], scale = yearsToSecs(1);
             
             // number of time steps
-            var N = 600;
+            var N = 100;
 
             function solvedOdeData() {
                 // initial value
