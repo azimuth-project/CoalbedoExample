@@ -17,51 +17,55 @@
     </script>
     
     <script>
-    var MIN_t = 0, MAX_t = 3,
-        INIT_t0 = 0, INIT_t1 = 1;
-        
-    function initSlider(valueName, sliderName, properties, sideEffect) {
-        properties.slide = function(event, ui) {
-            $(valueName).val(ui.value);
-            sideEffect();
-        }
-        $(sliderName).slider(properties);
-        $(valueName).val($(sliderName).slider("value"));
-    }
+    // gamma slider globals
+    var MIN_g = 0, MAX_g = 0.1, STEP_g = 0.001, currentGamma = 0.05;
     
+    // gamma slider init
     $(function() {
         $("#gamma-slider").slider({
-            value: 0, min: 0, max: 0.1, step: 0.001,
+            value: currentGamma, min: MIN_g, max: MAX_g, step: STEP_g,
             slide: function(event, ui) {
-                $("#gamma").val(ui.value);
+                currentGamma = +ui.value;
+                $("#gamma").val(currentGamma);
                 updateTemperatureBoard();
             }
         });
         $("#gamma").val($("#gamma-slider").slider("value"))
     });
-    // $(initSlider("#gamma", "#gamma-slider", {value: 0, min: 0, max: 0.1, step: 0.001}, updateTemperatureBoard));
-
+    
+    
+    // X slider globals
+    var MIN_X = 0, MAX_X = 50, STEP_X = 0.5, currentX = 25;
+    
+    // X slider init
     $(function() {
         $("#X-slider").slider({
-            value: 0, min: 0, max: 50, step: 0.1,
+            value: currentX, min: MIN_X, max: MAX_X, step: STEP_X,
             slide: function(event, ui) {
-                $("#X").val(ui.value);
+                currentX = +ui.value;
+                $("#X").val(currentX);
                 updateTemperatureBoard();
             }
         });
         $("#X").val($("#X-slider").slider("value"))
     });
-    // $(initSlider("#X", "#X-slider", {value: 0, min: 0, max: 50, step: 0.1}, updateTemperatureBoard));
-
+    
+    
+    // Time interval slider globals
+    var MIN_t = 0, MAX_t = 2, STEP_t = 0.02, currentTI0 = 0, currentTI1 = 1;
+    
+    // Time interval slider init
     $(function() {
         $( "#time-interval-slider" ).slider({
             range: true,
             min: MIN_t,
             max: MAX_t,
-            values: [INIT_t0, INIT_t1],
-            step: 0.01,
+            values: [currentTI0, currentTI1],
+            step: STEP_t,
             slide: function(event, ui) {
-                $( "#time-interval" ).val( ui.values[ 0 ] + " - " + ui.values[ 1 ] );
+                currentTI0 = ui.values[0];
+                currentTI1 = ui.values[1];
+                $( "#time-interval" ).val(currentTI0 + " - " + currentTI1);
                 updateTemperatureBoard();
             }
         });
@@ -73,6 +77,7 @@
 
 </head>
 <body>
+    <!-- sliders and labels -->
     <div class="slider">
         <p>
             <label for="gamma">Gamma:</label>
@@ -94,19 +99,29 @@
         
     </div>
     
+    <!-- charts -->
     <div class="coalbedo-charts">
         <p>Temperature \(T_\text{eq}\) for \(t\) between 0 and 10 years out.</p>
         <div id="temperature-box" class="jxgbox" style="width:600px; height:400px;"></div>
         
         <script type="text/javascript">
-            // some globals
+            // some more globals
             var INSOLATION_A = 218.0;           // watts per square meter
             var INSOLATION_RATE_B = 1.9;        // watts per square meter per celcius
             var INSOLATION_Q_BASE = 342.5;
             var HEAT_CAPACITY_C = 0.5 * 1e7;
-            var TEMPERATURE_RANGE = [-50, 50], T0 = TEMPERATURE_RANGE[0], T1 = TEMPERATURE_RANGE[1];
-            var NO_OF_CURVES = 15; 
+            var TEMPERATURE_RANGE = [-50, 50], 
+                T0 = TEMPERATURE_RANGE[0],
+                T1 = TEMPERATURE_RANGE[1];
+            var NO_OF_CURVES = 20; 
             var INITIAL_TEMPERATURES = [];
+            // time interval
+            var tI = [MIN_t, yearsToSecs(MAX_t)], 
+                tScale = yearsToSecs(1);            
+            // number of time steps
+            var N = 100;
+
+
             // the main temperature board (variable declared as global)
             var temperatureBoard = JXG.JSXGraph.initBoard(
                 'temperature-box', 
@@ -148,17 +163,20 @@
                 return rational_tanh(x);
             }
             
+            // makes use of currentGamma global
             function coalbedo(T) {
                 var ai = 0.38,  // ice-i planet
                     af = 0.71,  // ice-free planet
-                    g = +$("#gamma").val();
+                    g = currentGamma;
                 var ap = ai + 0.5 * (af - ai) * (1.0 + tanh(g * T));
                 return ap;
             }
+            
+            // makes use of currentX, currentTI0 and currentTI1 globals
             function insolationBump_f(t) {
-                var X = +$("#X").val();
-                var t0 = $("#time-interval-slider" ).slider("values", 0);
-                var t1 = $("#time-interval-slider" ).slider("values", 1);
+                var X = currentX;
+                var t0 = currentTI0;
+                var t1 = currentTI1;
                 if (yearsToSecs(t0) <= t && t < yearsToSecs(t1)) return X;
                 else return 0;
             }
@@ -183,12 +201,6 @@
                 return dTs_by_dt;
             }
 
-            // time interval
-            var tI = [MIN_t, yearsToSecs(MAX_t)], scale = yearsToSecs(1);
-            
-            // number of time steps
-            var N = 100;
-
             function solvedOdeData() {
                 // initial value
                 var TS0 = INITIAL_TEMPERATURES;
@@ -203,6 +215,8 @@
                 temperatureBoard.suspendUpdate();
                 var Ts = solvedOdeData();
                 for (var i=0, lenPlots=temperaturePlots.length; i < lenPlots; i++) {
+                    // this is the nasty function-in-a-function JavaScript trick to ensure
+                    // the inner function closes over the data for the current iteration i
                     temperaturePlots[i].updateDataArray = function(ii) { return function() {
                         // time intervals to push alongside data
                         var tCurrent = tI[0],
@@ -211,7 +225,7 @@
                         this.dataX = [];
                         this.dataY = [];
                         for (j=0; j < Ts.length; j++) {
-                            this.dataX[j] = tCurrent / scale;
+                            this.dataX[j] = tCurrent / tScale;
                             this.dataY[j] = Ts[j][ii];
                             tCurrent += tStep;
                         }
