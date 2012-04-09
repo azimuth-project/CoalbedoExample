@@ -13,7 +13,7 @@
     <script type="text/javascript" src="js/jquery-1.6.2.min.js"></script>
     <script type="text/javascript" src="js/jquery-ui-1.8.16.custom.min.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
-    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.92/jsxgraphcore.js">
+    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.93/jsxgraphcore.js">
     </script>
     
     <script>
@@ -30,7 +30,7 @@
                 updateTemperatureBoard();
             }
         });
-        $("#gamma").val($("#gamma-slider").slider("value"))
+        $("#gamma").val($("#gamma-slider").slider("value"));
     });
     
     
@@ -191,7 +191,8 @@
                     C = HEAT_CAPACITY_C,
                     Qt = insolationQ(t);
                     
-                var dTs_by_dt = [], T, ap, i, lenTs;
+                var dTs_by_dt = [];
+                var T, ap, i, lenTs;
                 for (i=0, lenTs=Ts.length; i < lenTs; i++) {
                     T = Ts[i];
                     ap = coalbedo(T);

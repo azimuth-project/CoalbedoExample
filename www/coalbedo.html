@@ -9,15 +9,26 @@
     <script type="text/javascript" src="js/jquery-1.6.2.min.js"></script>
     <script type="text/javascript" src="js/jquery-ui-1.8.16.custom.min.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
-    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.92/jsxgraphcore.js">
+    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.93/jsxgraphcore.js">
     </script>
     
     <script>
-    function currentGamma() {
-        return $( "#gamma" ).val();
-    }
+    // gamma slider globals
+    var MIN_g = 0.0, MAX_g = 0.1, STEP_g = 0.001, currentGamma = 0.05;
+
+    // gamma slider init
+    $(function() {
+        $( "#gamma-slider" ).slider({
+            value: currentGamma, min: MIN_g, max: MAX_g, step: STEP_g,
+            slide: function(event, ui) {
+                currentGamma = +ui.value;
+                $( "#gamma" ).val(currentGamma);
+                updateBoards();
+            }
+        });
+        $("#gamma").val($("#gamma-slider").slider("value"));
+    });
     
-    var INIT_GAMMA = 0.0;
     
     var COALBEDO_T0 = -50.0;
     var COALBEDO_T1 = 50.0;
@@ -41,12 +52,9 @@
     // rational approximation to tanh, as gratefully scraped from SO:
     //   http://stackoverflow.com/questions/6118028/fast-hyperbolic-tangent-approximation-in-javascript
     function rational_tanh(x) {
-        if ( x < -3 )
-            return -1.0;
-        else if ( x > 3 )
-            return 1.0;
-        else
-            return x * ( 27 + x * x ) / ( 27 + 9 * x * x );
+        if ( x < -3 ) return -1.0;
+        else if ( x > 3 ) return 1.0;
+        else return x * ( 27 + x * x ) / ( 27 + 9 * x * x );
     }
     function tanh(x) {
         return rational_tanh(x);
@@ -59,7 +67,7 @@
     }
     var INSOLATION_A = 218.0;   // watts per square meter
     var INSOLATION_RATE_B = 1.9;     // watts per square meter per celcius
-    var HEAT_CAPACITY = 0.5 * 1e7; 
+    var HEAT_CAPACITY_C = 0.5 * 1e7; 
     function insolationEq(g, T) {
         var A = INSOLATION_A;
         var B = INSOLATION_RATE_B;
@@ -70,32 +78,12 @@
     function rateOfTemperatureChange(g, q, T) {
         var A = INSOLATION_A;
         var B = INSOLATION_RATE_B;
-        var C = HEAT_CAPACITY;
+        var C = HEAT_CAPACITY_C;
         var ap = coalbedo(g, T);
         var dT_dt = (-A - B * T + q * ap) / C;
         return dT_dt;
     }
     </script>
-
-    <script>
-    $(function() {
-        $( "#slider" ).slider({
-            value:0.0,
-            min: 0.0,
-            max: 0.1,
-            step: 0.001,
-            slide: function( event, ui ) {
-                var g = ui.value;
-                var s = $( "#gamma" );
-                s.val( g );
-                coalbedoBoard.update(s);
-                insolationBoard.update(s);
-                temperatureBoard.update(s);
-            }
-        });
-        $( "#gamma" ).val( $( "#slider" ).slider( "value" ) );
-    });
-    </script>   
 
 </head>
 
@@ -107,7 +95,7 @@
             <input type="text" id="gamma" style="border:0; color:#f6931f; font-weight:bold;" />
         </p>
 
-        <div id="slider"></div>
+        <div id="gamma-slider"></div>
     </div>
     
     <div class="coalbedo-charts">
@@ -118,14 +106,28 @@
         <p>Temperature \(T_\text{eq}\) given insolation \(Q\) between 200 and 500.</p>
         <div id="temperature-box" class="jxgbox" style="width:500px; height:500px;"></div>
         <script type="text/javascript">
-            JXG.Options.renderer = "canvas";
-            var coalbedoBoard = JXG.JSXGraph.initBoard('coalbedo-box', {boundingbox: [-50, 0.75, 50, -0.05], axis:true, showCopyright:false});
-            var insolationBoard = JXG.JSXGraph.initBoard('insolation-box', {boundingbox: [-50, 600, 50, -20], axis:true, showCopyright:false});
-            var temperatureBoard = JXG.JSXGraph.initBoard('temperature-box', {boundingbox: [200, 50, 500, -50], axis:true, showCopyright:false});
+            var coalbedoBoard = JXG.JSXGraph.initBoard(
+                'coalbedo-box', 
+                {boundingbox: [-50, 0.75, 50, -0.05], axis:true, showCopyright:false, showNavigation: false, pan:false}
+            );
+            var insolationBoard = JXG.JSXGraph.initBoard(
+                'insolation-box', 
+                {boundingbox: [-50, 600, 50, -20], axis:true, showCopyright:false, showNavigation: false, pan:false}
+            );
+            var temperatureBoard = JXG.JSXGraph.initBoard(
+                'temperature-box', 
+                {boundingbox: [200, 50, 500, -50], axis:true, showCopyright:false, showNavigation: false, pan:false}
+            );
             
-            coalbedoBoard.create('functiongraph', [function(T){return coalbedo(currentGamma(), T);}], {strokeWidth:3});
-            insolationBoard.create('functiongraph', [function(T){return insolationEq(currentGamma(), T);}], {strokeWidth:3});
-            temperatureBoard.create('curve', [function(T){return insolationEq(currentGamma(), T);}, function(T){return T;}, -50, 50], {strokeWidth:3});
+            coalbedoBoard.create('functiongraph', [function(T){return coalbedo(currentGamma, T);}], {strokeWidth:3});
+            insolationBoard.create('functiongraph', [function(T){return insolationEq(currentGamma, T);}], {strokeWidth:3});
+            temperatureBoard.create('curve', [function(T){return insolationEq(currentGamma, T);}, function(T){return T;}, -50, 50], {strokeWidth:3});
+            
+            function updateBoards() {
+                coalbedoBoard.update();
+                insolationBoard.update();
+                temperatureBoard.update();
+            }
         </script>
     </div>
     
