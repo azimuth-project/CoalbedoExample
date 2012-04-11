@@ -1,53 +1,44 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
 
-<!-- can't be viewed locally as file:// in most browsers -->
+<!-- This page can't be viewed locally as file:// in most browsers, it needs to be accessed via a webserver -->
 
 <head>
     <title>Azimuth simple climate model example</title>
-    <link type="text/css" href="css/smoothness/jquery-ui-1.8.16.custom.css" rel="stylesheet" /> 
-    <script type="text/javascript" src="js/jquery-1.6.2.min.js"></script>
-    <script type="text/javascript" src="js/jquery-ui-1.8.16.custom.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="http://jsxgraph.uni-bayreuth.de/distrib/jsxgraph.css" />
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
     <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.93/jsxgraphcore.js">
     </script>
+</head>
+
+
+<body>
+    <!-- a div for the charts using relative positioning -->
+    <div id="coalbedo-charts" style="position:relative; width:800px;">
+        <!-- the ids for the following divs are used by JSXGraph to reference and draw into them -->
+        <!-- a div for the main temperature chart at the top-left -->
+        <div id="temperature-box" class="jxgbox" style="width:500px; height:500px; position:absolute; top:0px; left:0px;"></div>
+        <!-- a smaller div for the coalbedo graph at the top-right -->
+        <div id="coalbedo-box" class="jxgbox" style="position:absolute; width:280px; height:180px; top:0px; right:0px;"></div>
+    </div>
     
-    <script>
+    <!-- the script to compute the graphs and setup JSXGraph -->
+    <script type="text/javascript">
+    // globals
+    var T_AXIS_LABEL = "\\(T\\)";
+    var Q_AXIS_LABEL = "\\(Q_\\textrm{eq}\\)";
+    
+    var COALBEDO_T_AXIS_LABEL = "\\(T\\)";
+    var COALBEDO_AP_AXIS_LABEL = "\\(a_p\\)";
+    
     // gamma slider globals
-    var MIN_g = 0.0, MAX_g = 0.1, STEP_g = 0.001, currentGamma = 0.05;
-
-    // gamma slider init
-    $(function() {
-        $( "#gamma-slider" ).slider({
-            value: currentGamma, min: MIN_g, max: MAX_g, step: STEP_g,
-            slide: function(event, ui) {
-                currentGamma = +ui.value;
-                $( "#gamma" ).val(currentGamma);
-                updateBoards();
-            }
-        });
-        $("#gamma").val($("#gamma-slider").slider("value"));
-    });
+    var MIN_g = 0.0, START_g = 0.05, MAX_g = 0.1, STEP_g = 0.001;
+    var GAMMA_SLIDER_LABEL = "transition rate \\(\\gamma\\) from icy coalbedo \\(a_i\\) to ice-free coalbedo \\(a_f\\)";
     
-    
-    var COALBEDO_T0 = -50.0;
-    var COALBEDO_T1 = 50.0;
-    
-    var COALBEDO_LINE_COLOR = 0xDDFF0000;
-    
-    var INSOLATION_T0 = -50.0;
-    var INSOLATION_T1 = 50.0;
-    
-    var INSOLATION_LINE_COLOR = 0xDDFF0000;
-
-    var TEMPERATURE_T0 = -50.0;
-    var TEMPERATURE_T1 = 50.0;
-    
-    var TEMPERATURE_LINE_COLOR = 0xDDFF0000;
-    
-    var BACKGROUND_COLOR = 0xFFDDDDDD;
-    var AXES_COLOR = 0xFF000000;
-    var GRID_COLOR = 0xFFFFFFFF;
+    // global constants used in model
+    var INSOLATION_A = 218.0,       // watts per square meter
+        INSOLATION_RATE_B = 1.9,    // watts per square meter per celcius
+        HEAT_CAPACITY_C = 0.5 * 1e7;
     
     // rational approximation to tanh, as gratefully scraped from SO:
     //   http://stackoverflow.com/questions/6118028/fast-hyperbolic-tangent-approximation-in-javascript
@@ -60,14 +51,11 @@
         return rational_tanh(x);
     }
     function coalbedo(g, T) {
-        var ai = 0.38;  // ice-i planet
-        var af = 0.71;  // ice-free planet
+        var ai = 0.35;  // ice-i planet
+        var af = 0.7;  // ice-free planet
         var ap = ai + 0.5 * (af - ai) * (1.0 + tanh(g * T));
         return ap;
     }
-    var INSOLATION_A = 218.0;   // watts per square meter
-    var INSOLATION_RATE_B = 1.9;     // watts per square meter per celcius
-    var HEAT_CAPACITY_C = 0.5 * 1e7; 
     function insolationEq(g, T) {
         var A = INSOLATION_A;
         var B = INSOLATION_RATE_B;
@@ -75,61 +63,37 @@
         var Qeq = (A + B * T) / ap;
         return Qeq;
     }
-    function rateOfTemperatureChange(g, q, T) {
-        var A = INSOLATION_A;
-        var B = INSOLATION_RATE_B;
-        var C = HEAT_CAPACITY_C;
-        var ap = coalbedo(g, T);
-        var dT_dt = (-A - B * T + q * ap) / C;
-        return dT_dt;
-    }
+    
+    // JSXGraph setup
+    JXG.Options.text.useMathJax = true;
+    
+    // setup the board for temperature curve
+    var temperatureBoard = JXG.JSXGraph.initBoard(
+        'temperature-box', 
+        {boundingbox: [-10, 50, 530, -50], axis:true, showCopyright:false, showNavigation:false, pan:false}
+    );
+    temperatureBoard.create('text', [10, 45, function(){return T_AXIS_LABEL;}]);
+    temperatureBoard.create('text', [465, -3, function(){return Q_AXIS_LABEL;}]);
+    
+    // setup the slider and add some text to label it
+    var s=temperatureBoard.create('slider', [[40,30],[240,30],[MIN_g,START_g,MAX_g]],{snapWidth:STEP_g});
+    
+    temperatureBoard.create('text', [40, 34, function(){return GAMMA_SLIDER_LABEL; }]);
+
+    // add the temperature curve for the board
+    temperatureBoard.create('curve', [function(T){return insolationEq(s.Value(), T);}, function(T){return T;}, -50, 50], {strokeWidth:3});    
+
+    // setup the board for coalbedo graph
+    var coalbedoBoard = JXG.JSXGraph.initBoard(
+        'coalbedo-box', 
+        {boundingbox: [-50, 0.75, 50, -0.1], axis:true, showCopyright:false, showNavigation:false, pan:false}
+    );
+    coalbedoBoard.create('functiongraph', [function(T){return coalbedo(s.Value(), T);}], {strokeWidth:3, highlight:false});
+    coalbedoBoard.create('text', [43, -0.05, function(){return COALBEDO_T_AXIS_LABEL;}]);
+    coalbedoBoard.create('text', [1, 0.6, function(){return COALBEDO_AP_AXIS_LABEL;}]);
+    
+    // add coalbedo as child so it gets updated when temperature board does
+    temperatureBoard.addChild(coalbedoBoard);
     </script>
-
-</head>
-
-
-<body>
-    <div class="slider" style="width:400px; font: 62.5%">
-        <p>
-            <label for="gamma">Transition rate \(\gamma\) from icey coalbedo \(a_i\) to ice-free coalbedo \(a_f\)  (0.01 increments):</label>
-            <input type="text" id="gamma" style="border:0; color:#f6931f; font-weight:bold;" />
-        </p>
-
-        <div id="gamma-slider"></div>
-    </div>
-    
-    <div class="coalbedo-charts">
-        <p>Co-albedo \(a_p\) for selected \(\gamma\).</p>
-        <div id="coalbedo-box" class="jxgbox" style="width:500px; height:250px;"></div>
-        <p>Insolation \(Q_\text{eq}\) required to yield a given temperature \(T\) between -50C and 50C.</p>
-        <div id="insolation-box" class="jxgbox" style="width:500px; height:250px;"></div>
-        <p>Temperature \(T_\text{eq}\) given insolation \(Q\) between 200 and 500.</p>
-        <div id="temperature-box" class="jxgbox" style="width:500px; height:500px;"></div>
-        <script type="text/javascript">
-            var coalbedoBoard = JXG.JSXGraph.initBoard(
-                'coalbedo-box', 
-                {boundingbox: [-50, 0.75, 50, -0.05], axis:true, showCopyright:false, showNavigation: false, pan:false}
-            );
-            var insolationBoard = JXG.JSXGraph.initBoard(
-                'insolation-box', 
-                {boundingbox: [-50, 600, 50, -20], axis:true, showCopyright:false, showNavigation: false, pan:false}
-            );
-            var temperatureBoard = JXG.JSXGraph.initBoard(
-                'temperature-box', 
-                {boundingbox: [200, 50, 500, -50], axis:true, showCopyright:false, showNavigation: false, pan:false}
-            );
-            
-            coalbedoBoard.create('functiongraph', [function(T){return coalbedo(currentGamma, T);}], {strokeWidth:3});
-            insolationBoard.create('functiongraph', [function(T){return insolationEq(currentGamma, T);}], {strokeWidth:3});
-            temperatureBoard.create('curve', [function(T){return insolationEq(currentGamma, T);}, function(T){return T;}, -50, 50], {strokeWidth:3});
-            
-            function updateBoards() {
-                coalbedoBoard.update();
-                insolationBoard.update();
-                temperatureBoard.update();
-            }
-        </script>
-    </div>
-    
 </body>
 </html>
