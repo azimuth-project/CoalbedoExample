@@ -1,99 +1,58 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
 
-<!-- This page can't be viewed locally as file:// in most browsers, it needs to be accessed via a webserver -->
-
 <head>
-    <title>Azimuth simple climate model example</title>
+    <title>Azimuth simple climate models</title>
     <link rel="stylesheet" type="text/css" href="http://jsxgraph.uni-bayreuth.de/distrib/jsxgraph.css" />
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
-    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.93/jsxgraphcore.js">
-    </script>
+    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.93/jsxgraphcore.js"></script>
+    <script type="text/javascript" src="./js/coalbedo.js"></script>
 </head>
 
+<!-- the ids passed into 'initCharts(..)' are for the div elements which are used by JSXGraph to draw chart elements into -->
+<!-- (you can check the results of this in your browser, using eg Inspect Element.. in Chrome) -->
+<body onload="initCharts('temperature-box', 'control-box', 'coalbedo-box')">
 
-<body>
+    <h1>Azimuth simple climate model examples</h1>
+    
+    <p>
+        These charts were produced for John Baez's <a href="http://www.azimuthproject.org/azimuth/show/HomePage">Azimuth Project</a> to illustrate some simple models of
+        climate from the (as yet unpublished book):
+        <ul><li> Gerald R. North, <i>Simple Models of Global Climate</i>.</li></ul>
+    </p>
+    
+    <p>
+        They were included in <a href="http://math.ucr.edu/home/baez/week319.html">Week 319 of This Weeks Finds</a>, so
+        please look there for a nice explanation of the model (in a much broader context of predicting Ice age cycles!).
+        The purpose of this page is just to update the usage of the 
+        <a href="http://jsxgraph.uni-bayreuth.de/wp/">JSXGraph</a> software to be a bit easier
+        to follow (should anyone be interested in building further upon the examples).
+    </p>
+    
+    <p>
+        This indeed the hope over at the <a href="">Azimuth Forum</a>, so if you would like to help out please
+        introduce yourself and find out more about the project, which is staring down the barrel of producing
+        interactive examples the rest of the book!
+    </p>
+    
+    <h2>Insolation against temperature</h2>
+    
+    <p>
+        The main graph below plots the equilibrium insolation \(Q_\textrm{eq}\) against temperature \(T\) for the
+        given value of \(\gamma\) controlled by the slider to the right.  Below that, the inset graph to the right
+        is of the coalbedo funtion \(a_p\) for the given \(\gamma\).
+    </p>
+     
     <!-- a div for the charts using relative positioning -->
     <div id="coalbedo-charts" style="position:relative; width:800px;">
-        <!-- the ids for the following divs are used by JSXGraph to reference and draw into them -->
+
         <!-- a div for the main temperature chart at the top-left -->
         <div id="temperature-box" class="jxgbox" style="width:500px; height:500px; position:absolute; top:0px; left:0px;"></div>
-        <!-- a smaller div for the coalbedo graph at the top-right -->
-        <div id="coalbedo-box" class="jxgbox" style="position:absolute; width:280px; height:180px; top:0px; right:0px;"></div>
+
+        <!-- a smaller div for the control slider at the right -->
+        <div id="control-box" class="jsxbox" style="position:absolute; width:280px; height:180px; top:0px; right:0px"></div>
+
+        <!-- a smaller div for the coalbedo graph at the right -->
+        <div id="coalbedo-box" class="jxgbox" style="position:absolute; width:280px; height:180px; top:200px; right:0px;"></div>
     </div>
-    
-    <!-- the script to compute the graphs and setup JSXGraph -->
-    <script type="text/javascript">
-    // globals
-    var T_AXIS_LABEL = "\\(T\\)";
-    var Q_AXIS_LABEL = "\\(Q_\\textrm{eq}\\)";
-    
-    var COALBEDO_T_AXIS_LABEL = "\\(T\\)";
-    var COALBEDO_AP_AXIS_LABEL = "\\(a_p\\)";
-    
-    // gamma slider globals
-    var MIN_g = 0.0, START_g = 0.05, MAX_g = 0.1, STEP_g = 0.001;
-    var GAMMA_SLIDER_LABEL = "transition rate \\(\\gamma\\) from icy coalbedo \\(a_i\\) to ice-free coalbedo \\(a_f\\)";
-    
-    // global constants used in model
-    var INSOLATION_A = 218.0,       // watts per square meter
-        INSOLATION_RATE_B = 1.9,    // watts per square meter per celcius
-        HEAT_CAPACITY_C = 0.5 * 1e7;
-    
-    // rational approximation to tanh, as gratefully scraped from SO:
-    //   http://stackoverflow.com/questions/6118028/fast-hyperbolic-tangent-approximation-in-javascript
-    function rational_tanh(x) {
-        if ( x < -3 ) return -1.0;
-        else if ( x > 3 ) return 1.0;
-        else return x * ( 27 + x * x ) / ( 27 + 9 * x * x );
-    }
-    function tanh(x) {
-        return rational_tanh(x);
-    }
-    function coalbedo(g, T) {
-        var ai = 0.35;  // ice-i planet
-        var af = 0.7;  // ice-free planet
-        var ap = ai + 0.5 * (af - ai) * (1.0 + tanh(g * T));
-        return ap;
-    }
-    function insolationEq(g, T) {
-        var A = INSOLATION_A;
-        var B = INSOLATION_RATE_B;
-        var ap = coalbedo(g, T);
-        var Qeq = (A + B * T) / ap;
-        return Qeq;
-    }
-    
-    // JSXGraph setup
-    JXG.Options.text.useMathJax = true;
-    
-    // setup the board for temperature curve
-    var temperatureBoard = JXG.JSXGraph.initBoard(
-        'temperature-box', 
-        {boundingbox: [-10, 50, 530, -50], axis:true, showCopyright:false, showNavigation:false, pan:false}
-    );
-    temperatureBoard.create('text', [10, 45, function(){return T_AXIS_LABEL;}]);
-    temperatureBoard.create('text', [465, -3, function(){return Q_AXIS_LABEL;}]);
-    
-    // setup the slider and add some text to label it
-    var s=temperatureBoard.create('slider', [[40,30],[240,30],[MIN_g,START_g,MAX_g]],{snapWidth:STEP_g});
-    
-    temperatureBoard.create('text', [40, 34, function(){return GAMMA_SLIDER_LABEL; }]);
-
-    // add the temperature curve for the board
-    temperatureBoard.create('curve', [function(T){return insolationEq(s.Value(), T);}, function(T){return T;}, -50, 50], {strokeWidth:3});    
-
-    // setup the board for coalbedo graph
-    var coalbedoBoard = JXG.JSXGraph.initBoard(
-        'coalbedo-box', 
-        {boundingbox: [-50, 0.75, 50, -0.1], axis:true, showCopyright:false, showNavigation:false, pan:false}
-    );
-    coalbedoBoard.create('functiongraph', [function(T){return coalbedo(s.Value(), T);}], {strokeWidth:3, highlight:false});
-    coalbedoBoard.create('text', [43, -0.05, function(){return COALBEDO_T_AXIS_LABEL;}]);
-    coalbedoBoard.create('text', [1, 0.6, function(){return COALBEDO_AP_AXIS_LABEL;}]);
-    
-    // add coalbedo as child so it gets updated when temperature board does
-    temperatureBoard.addChild(coalbedoBoard);
-    </script>
 </body>
 </html>
