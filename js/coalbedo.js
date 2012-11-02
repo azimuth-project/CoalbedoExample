@@ -1,3 +1,7 @@
+// JSXGraph Options setup -- many JSXGraph features are controlled by these; a full list is here:
+//      http://jsxgraph.uni-bayreuth.de/wiki/index.php/Options
+JXG.Options.text.useMathJax = true;
+
 // global constants used in model
 var COALBEDO_ICY_AI = 0.35,     // coalbedo of an ice-i planet
     COALBEDO_ICE_FREE_AF = 0.7, // coalbedo of an ice-free planet
@@ -6,14 +10,12 @@ var COALBEDO_ICY_AI = 0.35,     // coalbedo of an ice-i planet
     HEAT_CAPACITY_C = 0.5 * 1e7;
 
 // setup the board for coalbedo graph
-function initCharts(temperatureId, controlId, coalbedoId) {
-    // JSXGraph setup
-    JXG.Options.text.useMathJax = true;
-    
+var controls, tb, cb; // left exposed for debugging
+function initCharts(temperatureId, controlId, coalbedoId) {    
     // init the controls and the boards
-    var controls = initControls(controlId);
-    var tb = initTemperatureBoard(temperatureId, controls.slider);
-    var cb = initCoalbedoBoard(coalbedoId, controls.slider);
+    controls = initControls(controlId);
+    tb = initTemperatureBoard(temperatureId, controls.slider);
+    cb = initCoalbedoBoard(coalbedoId, controls.slider);
     
     // add the temperature and coalbedo boards as dependents of the control board (so they get updated)
     controls.board.addChild(tb);
@@ -24,7 +26,7 @@ function initControls(controlId) {
     // create the control board: coords for the bounding box are somewhat arbitrary since 
     // we are not drawing anything to scale (had in mind a div element twice as wide as high)
     var controlBoard = JXG.JSXGraph.initBoard(controlId, {
-        boundingbox: [0, 100, 200, 0], // [minX, maxY, maxX, minY]
+        boundingbox: [0, 30, 200, 0], // [minX, maxY, maxX, minY]
         axis: false,
         showCopyright: false,
         showNavigation: false
@@ -43,14 +45,14 @@ function initControls(controlId) {
     
     // setup the slider and add some text to label it
     var s=controlBoard.create('slider', 
-        [   [0, 20],    // slide from [X, Y]
-            [100, 20],  // slide to [X, Y]
+        [   [0, 10],    // slide from [X, Y]
+            [100, 10],  // slide to [X, Y]
             [MIN_g, START_g, MAX_g]],  // min, start and max values for slider
         {snapWidth:STEP_g}  // slider increment
     );
     controlBoard.create('text', [
         0,  // X 
-        40, // Y
+        25, // Y
         GAMMA_SLIDER_LABEL  // label function 
     ]);
     
@@ -64,17 +66,44 @@ function initTemperatureBoard(temperatureId, slider) {
     // setup the board for temperature curve
     var temperatureBoard = JXG.JSXGraph.initBoard(temperatureId, { 
         boundingbox: [-10, 50, 530, -50],
-        axis:true, 
-        showCopyright:false, 
-        showNavigation:false, 
+        axis:false,
+        grid:false,
+        showCopyright:false,
+        showNavigation:false,
         pan:false
     });
     
+    // add Q_eq axis
+    temperatureBoard.create('axis',
+        [[0.0, 0.0],
+         [530.0, 0.0]],
+        {ticks : { 
+            // drawLabels : true,
+            // drawZero : false,
+            // insertTicks : true,
+            minTicksDistance : 10,
+            // minorHeight : 4,      // if <0: full width and height
+            majorHeight : 6,         // if <0: full width and height
+            minorTicks : 0,   //no minor tick between each major tick
+            // ticksDistance: 1,         // TODO doc
+            // strokeOpacity : 0.25
+        }}
+    );    
+    // add T axis
+    temperatureBoard.create('axis',
+        [[0.0, 0.0],
+         [0.0, 50.0]],
+        {ticks : {
+            majorHeight: 6,
+            minorTicks : 1,   //only 1 minor tick between each major tick
+        }}
+    );
+
     // add text for axes (the function() is needed for MathJax to work)
     function T_AXIS_LABEL(){return "\\(T\\)";}
     function Q_AXIS_LABEL(){return "\\(Q_\\textrm{eq}\\)";}
     temperatureBoard.create('text', [10, 45, T_AXIS_LABEL]);
-    temperatureBoard.create('text', [465, -3, Q_AXIS_LABEL]);
+    temperatureBoard.create('text', [480, -3, Q_AXIS_LABEL]);
     
     // add the temperature curve for the board
     function insolationX(T) {return insolationEq(slider.Value(), T);}

@@ -2,241 +2,25 @@
 
 <html>
 
-<!-- NOTE:   contains dynamic content so some browsers will not be able to view locally as file://.. -->
-
 <head>
-
-    <title>Azimuth simple climate model example</title>
-
-    <link type="text/css" href="css/smoothness/jquery-ui-1.8.16.custom.css" rel="stylesheet" /> 
-
-    <script type="text/javascript" src="js/jquery-1.6.2.min.js"></script>
-    <script type="text/javascript" src="js/jquery-ui-1.8.16.custom.min.js"></script>
-    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
-    <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.93/jsxgraphcore.js">
-    </script>
+    <meta charset="utf-8" />
     
-    <script>
-    // gamma slider globals
-    var MIN_g = 0, MAX_g = 0.1, STEP_g = 0.001, currentGamma = 0.05;
+    <title>Azimuth simple climate models - temperature</title>
     
-    // gamma slider init
-    $(function() {
-        $("#gamma-slider").slider({
-            value: currentGamma, min: MIN_g, max: MAX_g, step: STEP_g,
-            slide: function(event, ui) {
-                currentGamma = +ui.value;
-                $("#gamma").val(currentGamma);
-                updateTemperatureBoard();
-            }
-        });
-        $("#gamma").val($("#gamma-slider").slider("value"));
-    });
-    
-    
-    // X slider globals
-    var MIN_X = 0, MAX_X = 50, STEP_X = 0.5, currentX = 25;
-    
-    // X slider init
-    $(function() {
-        $("#X-slider").slider({
-            value: currentX, min: MIN_X, max: MAX_X, step: STEP_X,
-            slide: function(event, ui) {
-                currentX = +ui.value;
-                $("#X").val(currentX);
-                updateTemperatureBoard();
-            }
-        });
-        $("#X").val($("#X-slider").slider("value"))
-    });
-    
-    
-    // Time interval slider globals
-    var MIN_t = 0, MAX_t = 2, STEP_t = 0.02, currentTI0 = 0, currentTI1 = 1;
-    
-    // Time interval slider init
-    $(function() {
-        $( "#time-interval-slider" ).slider({
-            range: true,
-            min: MIN_t,
-            max: MAX_t,
-            values: [currentTI0, currentTI1],
-            step: STEP_t,
-            slide: function(event, ui) {
-                currentTI0 = ui.values[0];
-                currentTI1 = ui.values[1];
-                $( "#time-interval" ).val(currentTI0 + " - " + currentTI1);
-                updateTemperatureBoard();
-            }
-        });
-        var t0 = $("#time-interval-slider" ).slider("values", 0);
-        var t1 = $("#time-interval-slider" ).slider("values", 1);
-        $("#time-interval").val(t0 + " - " + t1);
-    });
-    </script>   
-
+    <link rel="stylesheet" href="http://jsxgraph.uni-bayreuth.de/distrib/jsxgraph.css" />
+    <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/jsxgraph/0.93/jsxgraphcore.js"></script>
+    <script src="./js/temperature.js"></script>
 </head>
-<body>
-    <!-- sliders and labels -->
-    <div class="slider">
-        <p>
-            <label for="gamma">Gamma:</label>
-            <input type="text" id="gamma" style="border:0; color:#f6931f; font-weight:bold;" />
-        </p>
-        <div id="gamma-slider" style="width:600px;"></div>
 
-        <p>
-            <label for="X">X:</label>
-            <input type="text" id="X" style="border:0; color:#f6931f; font-weight:bold;" />
-        </p>
-        <div id="X-slider" style="width:600px;"></div>
-
-        <p>
-            <label for="time-interval">Time interval:</label>
-            <input type="text" id="time-interval" style="border:0; color:#f6931f; font-weight:bold;" />
-        </p>
-        <div id="time-interval-slider" style="width:600px;"></div>
-        
-    </div>
+<body onload="initCharts('temperature-box', 'control-box')">
     
-    <!-- charts -->
-    <div class="coalbedo-charts">
-        <p>Temperature \(T_\text{eq}\) for \(t\) between 0 and 10 years out.</p>
-        <div id="temperature-box" class="jxgbox" style="width:600px; height:400px;"></div>
-        
-        <script type="text/javascript">
-            // some more globals
-            var INSOLATION_A = 218.0;           // watts per square meter
-            var INSOLATION_RATE_B = 1.9;        // watts per square meter per celcius
-            var INSOLATION_Q_BASE = 342.5;
-            var HEAT_CAPACITY_C = 0.5 * 1e7;
-            var TEMPERATURE_RANGE = [-50, 50], 
-                T0 = TEMPERATURE_RANGE[0],
-                T1 = TEMPERATURE_RANGE[1];
-            var NO_OF_CURVES = 20; 
-            var INITIAL_TEMPERATURES = [];
-            // time interval
-            var tI = [MIN_t, yearsToSecs(MAX_t)], 
-                tScale = yearsToSecs(1);            
-            // number of time steps
-            var N = 100;
-
-
-            // the main temperature board (variable declared as global)
-            var temperatureBoard = JXG.JSXGraph.initBoard(
-                'temperature-box', 
-                {boundingbox: [MIN_t, T1, MAX_t, T0], axis:true, showCopyright:false}
-            );
-            var temperaturePlots = [];
-            var incT = (T1 - T0) / NO_OF_CURVES;
-            var incColor = 0xff / NO_OF_CURVES;
-            for (var i=0, T=T0, red=0x00, blue=0xff; i < NO_OF_CURVES; i++) {
-                INITIAL_TEMPERATURES[i] = T;
-                var redStr = Math.round(red).toString(16),
-                    blueStr = Math.round(blue).toString(16);
-                
-                // the temperature plot global is initialized empty and filled in updateTemperatureBoard()
-                temperaturePlots[i] = temperatureBoard.createElement(
-                    'curve', 
-                    [[], []],
-                    {strokeColor: '#' + redStr + '00' + blueStr, strokeWidth: 2}
-                );
-                T += incT;
-                red += incColor;
-                blue -= incColor;
-            }
-            
-            function yearsToSecs(y) {
-                return y * 365.25 * 24 * 60 * 60;
-            }
-            
-            
-            // rational approximation to tanh, as gratefully scraped from SO:
-            //   http://stackoverflow.com/questions/6118028/fast-hyperbolic-tangent-approximation-in-javascript
-            function rational_tanh(x) {
-                if (x < -3) return -1.0;
-                else if (x > 3) return 1.0;
-                else return x * (27 + x * x) / (27 + 9 * x * x);
-            }
-            
-            function tanh(x) {
-                return rational_tanh(x);
-            }
-            
-            // makes use of currentGamma global
-            function coalbedo(T) {
-                var ai = 0.38,  // ice-i planet
-                    af = 0.71,  // ice-free planet
-                    g = currentGamma;
-                var ap = ai + 0.5 * (af - ai) * (1.0 + tanh(g * T));
-                return ap;
-            }
-            
-            // makes use of currentX, currentTI0 and currentTI1 globals
-            function insolationBump_f(t) {
-                var X = currentX;
-                var t0 = currentTI0;
-                var t1 = currentTI1;
-                if (yearsToSecs(t0) <= t && t < yearsToSecs(t1)) return X;
-                else return 0;
-            }
-            
-            function insolationQ(t) {
-                return INSOLATION_Q_BASE + insolationBump_f(t);
-            }
-            
-            function temperatureOde(t, Ts) {
-                var A = INSOLATION_A,
-                    B = INSOLATION_RATE_B,
-                    C = HEAT_CAPACITY_C,
-                    Qt = insolationQ(t);
-                    
-                var dTs_by_dt = [];
-                var T, ap, i, lenTs;
-                for (i=0, lenTs=Ts.length; i < lenTs; i++) {
-                    T = Ts[i];
-                    ap = coalbedo(T);
-                    dTs_by_dt[i] = (-A - B * T + Qt * ap) / C;
-                }
-            
-                return dTs_by_dt;
-            }
-
-            function solvedOdeData() {
-                // initial value
-                var TS0 = INITIAL_TEMPERATURES;
-                
-                // data from solved ode
-                var data = JXG.Math.Numerics.rungeKutta('heun', TS0, tI, N, temperatureOde);
-                
-                return data;
-            }
-            
-            function updateTemperatureBoard() {
-                temperatureBoard.suspendUpdate();
-                var Ts = solvedOdeData();
-                for (var i=0, lenPlots=temperaturePlots.length; i < lenPlots; i++) {
-                    // this is the nasty function-in-a-function JavaScript trick to ensure
-                    // the inner function closes over the data for the current iteration i
-                    temperaturePlots[i].updateDataArray = function(ii) { return function() {
-                        // time intervals to push alongside data
-                        var tCurrent = tI[0],
-                            tStep = (tI[1] - tI[0]) / N;
-
-                        this.dataX = [];
-                        this.dataY = [];
-                        for (j=0; j < Ts.length; j++) {
-                            this.dataX[j] = tCurrent / tScale;
-                            this.dataY[j] = Ts[j][ii];
-                            tCurrent += tStep;
-                        }
-                    }; }(i);
-                }
-                temperatureBoard.unsuspendUpdate();
-            }
-            
-            updateTemperatureBoard();
-        </script>
+    <h1>Temperature dynamics</h1>
+    
+    <div id="temperature-charts" style="position:relative; width:800px;">
+        <p>Temperature \(T_\text{eq}\) for \(t\) between 0 and 2 years out.</p>
+        <div id="temperature-box" class="jxgbox" style="width:800px; height:400px;"></div>
+        <div id="control-box" class="jxgbox" style="width:400px; height:150px; position:absolute; top:450px; left:0px;">        
     </div>
 </body>
 </html>
